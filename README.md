@@ -6,7 +6,7 @@ This repository only hosts the downloads. The app is a free preview for Windows 
 
 ## Website
 
-**[mikicarbre.github.io/capturesc-releases](https://mikicarbre.github.io/capturesc-releases/)**
+**[chefmiki.github.io/capturesc-releases](https://chefmiki.github.io/capturesc-releases/)**
 
 ## Download
 
