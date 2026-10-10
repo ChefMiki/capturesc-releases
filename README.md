@@ -15,7 +15,7 @@ This repository only hosts the downloads. The app is a free preview for Windows 
 ## Install
 
 1. Unzip the file anywhere, for example your Downloads folder.
-2. Double-click **Install.cmd** and click **Yes** when Windows asks for permission. The installer trusts the CaptureSC preview certificate, installs the app and starts it.
+2. Double-click **Install.cmd** and click **Yes** when Windows asks for permission. The installer trusts the CaptureSC preview certificate, installs the app and starts it. Don't open the .msix in the `files` folder directly; without the certificate Windows refuses it (error 0x800B010A).
 3. Press **Print Screen**. CaptureSC also lives in the tray next to the clock.
 
 **Smart App Control:** this preview is not code-signed yet. If Smart App Control is on, Windows may block CaptureSC; the installer tells you and explains how to turn it off (Windows Security → App & browser control → Smart App Control).
