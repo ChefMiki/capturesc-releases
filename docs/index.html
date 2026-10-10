@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CaptureSC</title>
+<meta name="description" content="Fast, private screenshots for Windows 11. Press Print Screen, select, mark it up, paste.">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+  /* Tokens: deep ink from the app's dark theme, the two blues of the app icon, Segoe UI Variable like the app. */
+  :root {
+    --ink: #0b1220;
+    --ink-2: #111a2c;
+    --line: rgba(232, 238, 248, .10);
+    --text: #e8eef8;
+    --muted: #93a0b5;
+    --blue: #2f6bff;
+    --sky: #5ab8ff;
+    --font: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", "Hanken Grotesk", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--font); }
+  body { line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: var(--sky); }
+  a:focus-visible, .download:focus-visible { outline: 2px solid var(--sky); outline-offset: 3px; border-radius: 8px; }
+  .wrap { width: min(1080px, 100% - 40px); margin-inline: auto; }
+
+  /* Hero: the page's headline is shown mid-capture, the way CaptureSC shows your screen. */
+  .hero { position: relative; min-height: 92vh; display: grid; place-items: center; overflow: hidden; padding: 64px 0; }
+  .hero::after { /* the soft white edge glow the app shows while you select */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), inset 0 0 36px rgba(255,255,255,.14), inset 0 0 120px rgba(255,255,255,.05);
+    animation: glow 3.4s ease-in-out infinite alternate;
+  }
+  @keyframes glow { to { box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), inset 0 0 22px rgba(255,255,255,.08), inset 0 0 90px rgba(255,255,255,.03); } }
+  .stage { position: relative; text-align: center; }
+  .icon { width: 88px; height: 88px; border-radius: 20px; display: block; margin: 0 auto 40px; box-shadow: 0 18px 60px rgba(47,107,255,.35); }
+  .shot { position: relative; display: inline-block; padding: 18px 34px 22px; isolation: isolate; }
+  .shot::before { /* dimmed screen outside the selection */
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    box-shadow: 0 0 0 200vmax rgba(5, 9, 18, .55);
+    outline: 1px solid rgba(255,255,255,.92);
+    animation: select 1.1s cubic-bezier(.2,.8,.2,1) .35s both;
+  }
+  @keyframes select { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0 0 0 0); } }
+  .handle { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); animation: appear .3s ease 1.3s both; }
+  .handle.tl { left: -4px; top: -4px; } .handle.tr { right: -4px; top: -4px; } .handle.bl { left: -4px; bottom: -4px; } .handle.br { right: -4px; bottom: -4px; }
+  .size { position: absolute; left: 0; top: -30px; font: 600 12px/1 var(--font); color: #fff; background: rgba(15, 20, 30, .9); padding: 5px 8px; border-radius: 4px; animation: appear .3s ease 1.3s both; font-variant-numeric: tabular-nums; }
+  @keyframes appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  h1 { margin: 0; font-size: clamp(44px, 8vw, 92px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 700; }
+  .lead { margin: 28px auto 0; max-width: 34em; font-size: clamp(17px, 2vw, 20px); color: var(--muted); }
+
+  /* The toolbar that appears under a selection doubles as the call to action. */
+  .toolbar { display: inline-flex; align-items: center; gap: 4px; margin-top: 34px; padding: 6px; border-radius: 12px;
+    background: rgba(32, 33, 37, .82); border: 1px solid rgba(255,255,255,.09); backdrop-filter: blur(24px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.45); animation: appear .45s cubic-bezier(.2,.9,.3,1.15) 1.5s both; }
+  .tool { width: 38px; height: 38px; display: grid; place-items: center; color: #e9edf4; border-radius: 6px; }
+  .tool svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .tool.on { background: rgba(76, 194, 255, .22); color: #8fd8ff; }
+  .sep { width: 1px; height: 22px; background: rgba(255,255,255,.12); margin: 0 4px; }
+  .download { display: inline-flex; align-items: center; gap: 10px; height: 38px; padding: 0 18px; border-radius: 6px; text-decoration: none;
+    background: var(--sky); color: #062033; font-weight: 600; font-size: 15px; }
+  .download:hover { background: #8ad0ff; }
+  .download svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .meta { margin-top: 16px; font-size: 13px; color: var(--muted); animation: appear .4s ease 1.7s both; }
+
+  section { padding: 96px 0; border-top: 1px solid var(--line); }
+  h2 { margin: 0 0 40px; font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -0.02em; font-weight: 650; }
+
+  .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 48px; margin: 0; padding: 0; list-style: none; }
+  .features li { display: grid; grid-template-columns: 40px 1fr; gap: 16px; }
+  .glyph { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: rgba(90, 184, 255, .10); color: var(--sky); }
+  .glyph svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .features h3 { margin: 6px 0 6px; font-size: 17px; font-weight: 600; }
+  .features p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .install { display: grid; grid-template-columns: 1.1fr 1fr; gap: 64px; align-items: start; }
+  .steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 28px; }
+  .steps li { counter-increment: step; display: grid; grid-template-columns: 36px 1fr; gap: 16px; }
+  .steps li::before { content: counter(step); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+    border: 1px solid var(--line); color: var(--text); font-weight: 600; font-size: 14px; }
+  .steps strong { display: block; font-weight: 600; margin-top: 4px; }
+  .steps span { color: var(--muted); font-size: 15px; }
+  .note { padding: 24px; border-radius: 12px; background: var(--ink-2); border: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+  .note strong { color: var(--text); display: block; margin-bottom: 6px; font-weight: 600; }
+  .key { display: inline-block; padding: 1px 7px; border-radius: 5px; border: 1px solid rgba(255,255,255,.18); border-bottom-width: 2px; color: var(--text); font-size: 13px; }
+
+  .privacy p { margin: 0; max-width: 38em; font-size: clamp(19px, 2.2vw, 24px); line-height: 1.45; color: var(--text); }
+  footer { padding: 40px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  @media (max-width: 860px) {
+    .features { grid-template-columns: 1fr 1fr; }
+    .install { grid-template-columns: 1fr; gap: 40px; }
+  }
+  @media (max-width: 560px) {
+    .features { grid-template-columns: 1fr; }
+    .shot { padding: 14px 16px 18px; }
+    .toolbar .tool:nth-child(n+4), .toolbar .sep { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="stage wrap">
+    <img class="icon" src="icon.png" alt="" width="88" height="88">
+    <div class="shot">
+      <span class="size" aria-hidden="true">1040 × 312</span>
+      <h1>Screenshots<br>without the wait</h1>
+      <i class="handle tl"></i><i class="handle tr"></i><i class="handle bl"></i><i class="handle br"></i>
+    </div>
+    <p class="lead">Press Print Screen, select an area or click a window, mark it up right there and paste it anywhere. CaptureSC replaces the Windows Snipping Tool with something faster and calmer.</p>
+    <div class="toolbar" role="group" aria-label="CaptureSC toolbar preview">
+      <span class="tool on" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M9 5h10v10"/></svg></span>
+      <span class="tool" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></span>
+      <span class="tool" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg></span>
+      <span class="sep" aria-hidden="true"></span>
+      <a class="download" href="https://github.com/MikiCarBre/capturesc-releases/releases/latest/download/CaptureSC-win-x64.zip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+        Download for Windows 11
+      </a>
+    </div>
+    <p class="meta">Free preview. About 92 MB, nothing else to install.</p>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <h2>Everything happens where you capture</h2>
+      <ul class="features">
+        <li>
+          <span class="glyph"><svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg></span>
+          <div><h3>Ready instantly</h3><p>The screen freezes in about a tenth of a second, with a magnifier for pixel-exact edges.</p></div>
+        </li>
+        <li>
+          <span class="glyph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="12" height="10" rx="2"/><rect x="9" y="9" width="12" height="10" rx="2"/></svg></span>
+          <div><h3>Click a window</h3><p>No dragging needed. Or select any area and adjust it with handles and arrow keys.</p></div>
+        </li>
+        <li>
+          <span class="glyph"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M9 5h10v10"/></svg></span>
+          <div><h3>Mark it up in place</h3><p>Arrows, rectangles, ellipses, highlight, text and numbered steps, right on the selection.</p></div>
+        </li>
+        <li>
+          <span class="glyph"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg></span>
+          <div><h3>Redact for good</h3><p>Pixels are destroyed, not blurred, so emails and phone numbers cannot be recovered.</p></div>
+        </li>
+        <li>
+          <span class="glyph"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span>
+          <div><h3>Saved and copied</h3><p>The moment you let go, it is in your Screenshots folder and on the clipboard.</p></div>
+        </li>
+        <li>
+          <span class="glyph"><svg viewBox="0 0 24 24"><path d="M15 3.5 20.5 9 17 10.5 13.5 14l.5 4.5L5.5 10l4.5.5L13.5 7zM9.5 14.5 4 20"/></svg></span>
+          <div><h3>Pin, history, your keys</h3><p>Keep a capture floating on top, find old ones, and choose your own shortcuts.</p></div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap install">
+      <div>
+        <h2>Install in a minute</h2>
+        <ol class="steps">
+          <li><div><strong>Unzip the download</strong><span>Anywhere you like, for example your Downloads folder.</span></div></li>
+          <li><div><strong>Double-click Install.cmd</strong><span>Click Yes when Windows asks. The installer adds the preview certificate, installs CaptureSC and starts it.</span></div></li>
+          <li><div><strong>Press <span class="key">Print Screen</span></strong><span>That is it. CaptureSC waits in the tray next to the clock.</span></div></li>
+        </ol>
+      </div>
+      <div class="note">
+        <strong>About Smart App Control</strong>
+        This preview is not code-signed yet. If Smart App Control is on, Windows may block CaptureSC. The installer checks for you and explains how to turn it off in Windows Security, under App &amp; browser control.
+      </div>
+    </div>
+  </section>
+
+  <section class="privacy">
+    <div class="wrap">
+      <h2>Private by design</h2>
+      <p>Everything stays on your computer. No account, no analytics, and nothing is ever uploaded. Your screenshots are plain files in your Pictures folder.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <span>CaptureSC for Windows 11</span>
+  <span><a href="https://github.com/MikiCarBre/capturesc-releases/issues/new">Report a problem</a> &nbsp; <a href="https://github.com/MikiCarBre/capturesc-releases/releases">All versions</a></span>
+</footer>
+
+</body>
+</html>
