@@ -4,173 +4,434 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CaptureSC</title>
-<meta name="description" content="Fast, private screenshots for Windows 11. Press Print Screen, select, mark it up, paste.">
+<meta name="description" content="Fast, private screenshots for Windows 11. Press Print Screen, click a window, mark it up, paste.">
 <link rel="icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap">
+<script>try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <style>
-  /* Tokens: deep ink from the app's dark theme, the two blues of the app icon, Segoe UI Variable like the app. */
   :root {
-    --ink: #0b1220;
-    --ink-2: #111a2c;
-    --line: rgba(232, 238, 248, .10);
-    --text: #e8eef8;
-    --muted: #93a0b5;
+    --page: #f5f6f8;
+    --stage: #d9e0ea;
+    --stage-2: #e7ecf3;
+    --ink: #10131a;
+    --muted: #5b6474;
+    --line: rgba(16, 19, 26, .10);
+    --card: #ffffff;
     --blue: #2f6bff;
     --sky: #5ab8ff;
+    --glass: rgba(28, 30, 36, .84);
     --font: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", "Hanken Grotesk", system-ui, sans-serif;
-    color-scheme: dark;
+    --spring: cubic-bezier(.2, .9, .25, 1.15);
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    color-scheme: light;
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #0c0f14; --stage: #171c26; --stage-2: #1d2330; --ink: #eef1f6; --muted: #98a2b3;
+      --line: rgba(238, 241, 246, .10); --card: #1b212c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #0c0f14; --stage: #171c26; --stage-2: #1d2330; --ink: #eef1f6; --muted: #98a2b3;
+    --line: rgba(238, 241, 246, .10); --card: #1b212c; color-scheme: dark;
+  }
+
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--font); }
-  body { line-height: 1.55; -webkit-font-smoothing: antialiased; }
-  a { color: var(--sky); }
-  a:focus-visible, .download:focus-visible { outline: 2px solid var(--sky); outline-offset: 3px; border-radius: 8px; }
-  .wrap { width: min(1080px, 100% - 40px); margin-inline: auto; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font); }
+  body { line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; transition: background .4s, color .4s; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
+  .wrap { width: min(1160px, 100% - 32px); margin-inline: auto; }
 
-  /* Hero: the page's headline is shown mid-capture, the way CaptureSC shows your screen. */
-  .hero { position: relative; min-height: 92vh; display: grid; place-items: center; overflow: hidden; padding: 64px 0; }
-  .hero::after { /* the soft white edge glow the app shows while you select */
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), inset 0 0 36px rgba(255,255,255,.14), inset 0 0 120px rgba(255,255,255,.05);
-    animation: glow 3.4s ease-in-out infinite alternate;
+  /* Nav */
+  .nav { position: sticky; top: 0; z-index: 20; backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+    background: color-mix(in srgb, var(--page) 72%, transparent); border-bottom: 1px solid var(--line); }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; text-decoration: none; letter-spacing: -.01em; }
+  .brand img { width: 26px; height: 26px; border-radius: 7px; }
+  .nav nav { display: flex; align-items: center; gap: 28px; font-size: 14px; }
+  .nav nav a:not(.btn) { text-decoration: none; color: var(--muted); }
+  .nav nav a:not(.btn):hover { color: var(--ink); }
+
+  .btn { display: inline-flex; align-items: center; gap: 9px; height: 44px; padding: 0 22px; border-radius: 999px; font-weight: 600; font-size: 15px;
+    text-decoration: none; background: var(--ink); color: var(--page); transition: transform .25s var(--spring), background .2s; }
+  .btn:hover { transform: scale(1.03); }
+  .btn:active { transform: scale(.98); }
+  .btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn.small { height: 34px; padding: 0 16px; font-size: 13px; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+
+  /* Hero */
+  .hero { padding: 88px 0 0; text-align: center; }
+  .hero h1 { margin: 0 auto; font-size: clamp(46px, 8.4vw, 104px); line-height: .98; letter-spacing: -.045em; font-weight: 750; }
+  .hero .lead { margin: 26px auto 0; max-width: 33em; font-size: clamp(17px, 1.9vw, 21px); color: var(--muted); }
+  .cta { margin-top: 34px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .meta { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .hero .reveal { animation: rise .9s var(--ease) both; }
+  .hero .reveal:nth-child(2) { animation-delay: .08s; } .hero .reveal:nth-child(3) { animation-delay: .16s; } .hero .reveal:nth-child(4) { animation-delay: .22s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+  /* Stage with the laptop */
+  .stage { position: relative; margin: 64px auto 0; width: min(1160px, 100% - 32px); border-radius: 32px; background: linear-gradient(180deg, var(--stage-2), var(--stage));
+    padding: 7% 8% 9%; perspective: 2200px; perspective-origin: 50% 30%; }
+  .device { container-type: inline-size; position: relative; }
+  .laptop { position: relative; transform-style: preserve-3d; --p: 0;
+    transform: rotateX(calc((1 - var(--p)) * 9deg)) rotateY(calc((1 - var(--p)) * -20deg)) rotateZ(calc((1 - var(--p)) * 1deg)) scale(calc(.93 + var(--p) * .07));
+    transition: transform .1s linear; }
+  .lid { position: relative; transform-style: preserve-3d; background: #0d0f13; border-radius: 2.2cqw 2.2cqw .6cqw .6cqw; padding: 1.5cqw 1.5cqw 2.2cqw;
+    box-shadow: inset 0 0 0 .18cqw #2a2e36, 0 0 0 .1cqw #050608; }
+  .screen { position: relative; aspect-ratio: 16 / 10; transform-style: preserve-3d; }
+  .base { position: relative; height: 1.7cqw; margin: 0 -6%; border-radius: 0 0 2.4cqw 2.4cqw / 0 0 1.5cqw 1.5cqw;
+    background: linear-gradient(180deg, #d6d9df, #a9aeb7 55%, #7f848d); box-shadow: 0 .2cqw 0 rgba(0,0,0,.08); }
+  .base::before { content: ""; position: absolute; left: 50%; top: 0; width: 14%; height: 45%; transform: translateX(-50%); border-radius: 0 0 1cqw 1cqw; background: linear-gradient(180deg, #9da2ab, #c3c7ce); }
+  .ground { position: absolute; left: 6%; right: 6%; bottom: 5%; height: 6%; border-radius: 50%; background: rgba(30, 45, 80, .32); filter: blur(28px); }
+
+  /* The desktop inside the screen (clipped layer) */
+  .wall { position: absolute; inset: 0; overflow: hidden; border-radius: .4cqw;
+    background: radial-gradient(60% 80% at 72% 68%, #8fd3ff 0%, #4c9bff 28%, #2f5fe0 52%, #18286e 78%, #0a1033 100%); }
+  .wall::before { content: ""; position: absolute; inset: -20%; background: radial-gradient(40% 50% at 30% 30%, rgba(255,255,255,.35), transparent 60%), radial-gradient(30% 40% at 85% 20%, rgba(170,120,255,.45), transparent 70%); }
+  .taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 5.2%; background: rgba(240, 244, 250, .72); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; gap: .9cqw; }
+  .taskbar i { width: 2cqw; height: 2cqw; border-radius: .45cqw; background: linear-gradient(135deg, #fff, #c9d6ea); box-shadow: 0 .1cqw .3cqw rgba(0,0,0,.15); }
+  .taskbar i:nth-child(1) { background: linear-gradient(135deg, #5ab8ff, #2f6bff); }
+  .taskbar i:nth-child(3) { background: linear-gradient(135deg, #ffcf5a, #ff9f2f); }
+  .taskbar i:nth-child(4) { background: linear-gradient(135deg, #7be08f, #22a35a); }
+  .dim { position: absolute; inset: 0; background: rgba(6, 10, 20, .52); opacity: 0; transition: opacity .35s var(--ease); }
+  .glow { position: absolute; inset: 0; opacity: 0; transition: opacity .4s; box-shadow: inset 0 0 0 .1cqw rgba(255,255,255,.5), inset 0 0 2.4cqw rgba(255,255,255,.35), inset 0 0 7cqw rgba(255,255,255,.12); }
+
+  /* The app window that gets captured and lifts out of the screen */
+  .win { position: absolute; left: 17%; top: 11%; width: 58%; height: 62%; border-radius: .8cqw; background: #fbfcfe; color: #1a1f2b;
+    display: grid; grid-template-columns: 24% 1fr; grid-template-rows: 3.2cqw 1fr; overflow: visible;
+    box-shadow: 0 1.2cqw 3cqw rgba(8, 20, 60, .30); transform: translateZ(0); transition: transform .9s var(--spring), box-shadow .9s var(--ease); font-size: 1.05cqw; line-height: 1.35; }
+  .win .bar { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 0 1.2cqw; border-bottom: .08cqw solid #e8ecf2; font-weight: 600; font-size: .95cqw; color: #59627a; }
+  .win .ctl { display: flex; gap: 1.5cqw; }
+  .win .ctl b { width: .9cqw; height: .9cqw; border: .1cqw solid #8a93a6; border-radius: .15cqw; }
+  .win .ctl b:first-child { height: 0; border-width: .1cqw 0 0; align-self: center; }
+  .win .side { padding: 1.3cqw 1cqw; background: #f2f5fa; border-radius: 0 0 0 .8cqw; display: grid; align-content: start; gap: .55cqw; color: #59627a; }
+  .win .side span { padding: .35cqw .7cqw; border-radius: .4cqw; }
+  .win .side span.on { background: #dfe9ff; color: #1d4ed8; font-weight: 600; }
+  .win .main { position: relative; padding: 1.5cqw 2cqw; display: grid; grid-template-columns: 1.25fr 1fr; grid-template-rows: auto 1fr; gap: 1.2cqw; }
+  .win h4 { grid-column: 1 / -1; margin: 0; font-size: 1.9cqw; letter-spacing: -.02em; }
+  .chart { background: #fff; border: .08cqw solid #e6eaf1; border-radius: .7cqw; padding: 1cqw; display: flex; align-items: end; gap: .8cqw; }
+  .chart i { flex: 1; border-radius: .3cqw .3cqw 0 0; background: #c9dbff; }
+  .chart i.hi { background: #2f6bff; }
+  .contact { position: relative; background: #fff; border: .08cqw solid #e6eaf1; border-radius: .7cqw; padding: 1cqw 1.2cqw; display: grid; align-content: start; gap: .5cqw; }
+  .contact strong { font-size: 1.15cqw; }
+  .contact span { color: #59627a; position: relative; width: max-content; }
+  .redact { position: absolute; inset: -.15cqw -.3cqw; border-radius: .2cqw; transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease);
+    background-color: #8b93a3; background-image: linear-gradient(90deg, rgba(255,255,255,.18) 50%, transparent 0), linear-gradient(rgba(0,0,0,.14) 50%, transparent 0);
+    background-size: .9cqw .9cqw; }
+  .contact span:nth-of-type(3) .redact { transition-delay: .18s; }
+  .marks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .marks path { fill: none; stroke: #ff3b30; stroke-width: .9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 60; stroke-dashoffset: 60; transition: stroke-dashoffset .7s var(--ease); }
+  .marks .head { stroke-dasharray: 14; stroke-dashoffset: 14; transition-delay: .55s; transition-duration: .25s; }
+  .step { position: absolute; left: 6%; top: 46%; width: 2.2cqw; height: 2.2cqw; border-radius: 50%; background: #ff3b30; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 1.1cqw; transform: scale(0); transition: transform .4s var(--spring); }
+
+  /* Selection chrome */
+  .sel { position: absolute; inset: -.15cqw; border: .16cqw solid #fff; border-radius: .9cqw; opacity: 0; pointer-events: none; transition: opacity .25s; animation: pulse 1.6s ease-in-out infinite alternate; }
+  @keyframes pulse { to { border-color: rgba(255,255,255,.65); } }
+  .sel i { position: absolute; width: 1cqw; height: 1cqw; border-radius: 50%; background: #fff; box-shadow: 0 0 0 .1cqw rgba(0,0,0,.3); }
+  .sel i:nth-child(1) { left: -.55cqw; top: -.55cqw; } .sel i:nth-child(2) { right: -.55cqw; top: -.55cqw; } .sel i:nth-child(3) { left: -.55cqw; bottom: -.55cqw; } .sel i:nth-child(4) { right: -.55cqw; bottom: -.55cqw; }
+  .sel em { position: absolute; left: 0; top: -2.6cqw; font: 600 .95cqw/1 var(--font); font-style: normal; color: #fff; background: rgba(15,20,30,.9); padding: .45cqw .65cqw; border-radius: .35cqw; font-variant-numeric: tabular-nums; }
+
+  .tools { position: absolute; left: 50%; top: 77%; display: flex; gap: .3cqw; padding: .45cqw; border-radius: 1cqw; background: var(--glass); backdrop-filter: blur(16px);
+    box-shadow: 0 1.5cqw 3.5cqw rgba(0,0,0,.4), inset 0 0 0 .08cqw rgba(255,255,255,.1); opacity: 0; transform: translate(-50%, 1cqw) translateZ(9cqw) scale(.9); transition: opacity .3s, transform .6s var(--spring); }
+  .tools span { width: 2.9cqw; height: 2.9cqw; border-radius: .55cqw; display: grid; place-items: center; color: #e9edf4; transition: background .25s, color .25s; }
+  .tools svg { width: 1.6cqw; height: 1.6cqw; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tools .sep { width: .08cqw; background: rgba(255,255,255,.14); margin: .5cqw .2cqw; height: auto; border-radius: 0; }
+  .tools .done { background: var(--sky); color: #062033; }
+
+  .pill { position: absolute; left: 50%; bottom: 9%; display: flex; align-items: center; gap: .8cqw; padding: .9cqw 1.6cqw .9cqw 1cqw; border-radius: 999px; background: var(--glass); color: #fff;
+    font-size: 1.15cqw; font-weight: 600; backdrop-filter: blur(16px); box-shadow: 0 1cqw 3cqw rgba(0,0,0,.35); opacity: 0; transform: translate(-50%, 2cqw) translateZ(6cqw) scale(.85); transition: opacity .3s, transform .6s var(--spring); }
+  .pill b { width: 1.9cqw; height: 1.9cqw; border-radius: 50%; background: #34c759; display: grid; place-items: center; }
+  .pill svg { width: 1.1cqw; height: 1.1cqw; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Keycap floating on the stage */
+  .key { position: absolute; left: 4%; bottom: -3.2%; width: clamp(76px, 11vw, 132px); aspect-ratio: 1; border-radius: 24%; display: grid; place-items: center; text-align: center;
+    background: linear-gradient(180deg, #ffffff, #eef1f6); color: #1a1f2b; font-weight: 650; font-size: clamp(14px, 1.9vw, 22px); letter-spacing: -.01em;
+    box-shadow: 0 .55em 0 #c4cad6, 0 1.6em 2.4em rgba(20, 35, 70, .28); transition: transform .14s ease-out, box-shadow .14s ease-out; transform: translateY(-.55em); }
+  .key span { grid-area: 1 / 1; transition: opacity .2s; }
+  .key .k2 { opacity: 0; }
+  .key.down { transform: translateY(0); box-shadow: 0 0 0 #c4cad6, 0 .6em 1.2em rgba(20, 35, 70, .25); }
+
+  /* Animation states (classes set by the timeline script) */
+  .s-freeze .dim, .s-freeze .glow { opacity: 1; }
+  .s-select .sel { opacity: 1; }
+  .s-lift .win { transform: translateZ(12cqw) rotateY(6deg) rotateX(-2deg); box-shadow: 0 4cqw 7cqw rgba(8, 20, 60, .45); }
+  .s-lift .tools { opacity: 1; transform: translate(-50%, 0) translateZ(16cqw) scale(1); }
+  .s-arrow .marks path { stroke-dashoffset: 0; }
+  .s-arrow .step { transform: scale(1); }
+  .s-arrow .tools [data-t="arrow"] { background: rgba(90, 184, 255, .28); color: #9bdcff; }
+  .s-redact .redact { transform: scaleX(1); }
+  .s-redact .tools [data-t="arrow"] { background: none; color: #e9edf4; }
+  .s-redact .tools [data-t="redact"] { background: rgba(90, 184, 255, .28); color: #9bdcff; }
+  .s-done .pill { opacity: 1; transform: translate(-50%, 0) translateZ(6cqw) scale(1); }
+  .stage.s-done .key .k1 { opacity: 0; } .stage.s-done .key .k2 { opacity: 1; }
+
+  /* Sections */
+  section { padding: 128px 0 0; }
+  h2 { margin: 0; font-size: clamp(34px, 5vw, 60px); line-height: 1.04; letter-spacing: -.035em; font-weight: 720; max-width: 16ch; }
+  .sub { margin: 18px 0 0; max-width: 36em; font-size: clamp(17px, 1.7vw, 19px); color: var(--muted); }
+
+  /* Interactive markup demo */
+  .studio { margin-top: 48px; border-radius: 32px; background: linear-gradient(180deg, var(--stage-2), var(--stage)); padding: clamp(20px, 5vw, 64px); display: grid; justify-items: center; gap: 26px; }
+  .shot { container-type: inline-size; width: min(760px, 100%); }
+  .shot .win { position: relative; left: auto; top: auto; width: 100%; height: auto; aspect-ratio: 3 / 2; font-size: 1.7cqw; border-radius: 1.4cqw; grid-template-rows: 5.2cqw 1fr;
+    box-shadow: 0 3cqw 6cqw rgba(8, 20, 60, .22); transform: none; }
+  .shot .win .bar { font-size: 1.55cqw; padding: 0 2cqw; } .shot .win .ctl { gap: 2.4cqw; } .shot .win .ctl b { width: 1.4cqw; height: 1.4cqw; }
+  .shot .win .side { padding: 2.2cqw 1.6cqw; gap: .9cqw; border-radius: 0 0 0 1.4cqw; } .shot .win .side span { padding: .6cqw 1.1cqw; border-radius: .7cqw; }
+  .shot .win .main { padding: 2.4cqw 3.2cqw; gap: 2cqw; } .shot .win h4 { font-size: 3cqw; }
+  .shot .chart { padding: 1.6cqw; gap: 1.3cqw; border-radius: 1.1cqw; } .shot .contact { padding: 1.6cqw 2cqw; gap: .8cqw; border-radius: 1.1cqw; } .shot .contact strong { font-size: 1.9cqw; }
+  .shot .redact { background-size: 1.4cqw 1.4cqw; }
+  .shot .step { width: 3.6cqw; height: 3.6cqw; font-size: 1.8cqw; }
+  .shot .box { position: absolute; border: .35cqw solid #ff3b30; border-radius: .6cqw; inset: 30% 50% 9% 3%; opacity: 0; transform: scale(1.06); transition: opacity .3s, transform .45s var(--spring); }
+  .shot .hl { position: absolute; left: 53%; top: 33%; width: 26%; height: 7%; background: rgba(255, 214, 10, .5); border-radius: .3cqw; transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease); mix-blend-mode: multiply; }
+  .shot .note { position: absolute; left: 47%; bottom: 3%; color: #ff3b30; font-weight: 700; font-size: 2.2cqw; opacity: 0; transform: translateY(1cqw); transition: opacity .3s, transform .4s var(--spring); }
+  .shot[data-tool="arrow"] .marks path { stroke-dashoffset: 0; }
+  .shot[data-tool="box"] .box { opacity: 1; transform: none; }
+  .shot[data-tool="highlight"] .hl { transform: scaleX(1); }
+  .shot[data-tool="redact"] .redact { transform: scaleX(1); }
+  .shot[data-tool="text"] .note { opacity: 1; transform: none; }
+  .shot[data-tool="steps"] .step { transform: scale(1); }
+  .shot[data-tool="steps"] .step + .step { transition-delay: .12s; } .shot[data-tool="steps"] .step + .step + .step { transition-delay: .24s; }
+  .picker { display: flex; gap: 4px; padding: 6px; border-radius: 16px; background: var(--glass); backdrop-filter: blur(20px); box-shadow: 0 16px 40px rgba(0,0,0,.25); flex-wrap: wrap; justify-content: center; }
+  .picker button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; color: #e9edf4; font-size: 14px; font-weight: 500; transition: background .2s, color .2s; }
+  .picker button:hover { background: rgba(255,255,255,.08); }
+  .picker button[aria-pressed="true"] { background: rgba(90, 184, 255, .26); color: #a5e0ff; }
+  .picker button:focus-visible { outline: 2px solid var(--sky); outline-offset: 1px; }
+  .picker svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .caption { margin: 0; font-size: 15px; color: var(--muted); text-align: center; min-height: 1.6em; }
+
+  /* Tiles */
+  .tiles { margin-top: 48px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .tile { position: relative; overflow: hidden; border-radius: 28px; background: var(--card); padding: 34px; min-height: 340px; display: flex; flex-direction: column; box-shadow: inset 0 0 0 1px var(--line); }
+  .tile h3 { margin: 0; font-size: 24px; line-height: 1.2; letter-spacing: -.02em; font-weight: 680; max-width: 15ch; }
+  .tile p { margin: 10px 0 0; color: var(--muted); font-size: 16px; max-width: 28em; }
+  .tile .art { margin-top: auto; padding-top: 28px; }
+  .t-speed { grid-column: span 4; background: linear-gradient(160deg, #0f1a3a, #183a9e 60%, #4c9bff); color: #fff; }
+  .t-speed p { color: rgba(255,255,255,.75); }
+  .t-pin { grid-column: span 2; }
+  .t-keys { grid-column: span 2; }
+  .t-history { grid-column: span 4; }
+
+  .timeline { position: relative; height: 92px; }
+  .timeline .track { position: absolute; left: 0; right: 0; top: 58px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.18); }
+  .timeline .fill { position: absolute; left: 0; top: 58px; height: 4px; border-radius: 4px; background: #fff; width: 0; transition: width 1.1s var(--ease); }
+  .timeline .us { position: absolute; top: 24px; left: 0; font-weight: 650; font-size: 15px; opacity: 0; transition: opacity .3s .9s; }
+  .timeline .them { position: absolute; right: 0; top: 24px; font-size: 14px; color: rgba(255,255,255,.65); }
+  .timeline .mark { position: absolute; top: 52px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 6px rgba(255,255,255,.2); left: 0; transition: left 1.1s var(--ease); }
+  .in .timeline .fill { width: 9%; } .in .timeline .mark { left: 9%; } .in .timeline .us { opacity: 1; }
+
+  .pinart { position: relative; height: 170px; }
+  .pinart .back { position: absolute; inset: 22px 0 0 18px; border-radius: 14px; background: var(--page); box-shadow: inset 0 0 0 1px var(--line); }
+  .pinart .back::before { content: ""; position: absolute; left: 18px; right: 40%; top: 22px; height: 10px; border-radius: 5px; background: var(--line); box-shadow: 0 22px 0 var(--line), 0 44px 0 var(--line); }
+  .pinart .card { position: absolute; right: 6px; top: 0; width: 58%; aspect-ratio: 4 / 3; border-radius: 12px; background: radial-gradient(70% 90% at 70% 70%, #8fd3ff, #2f5fe0 60%, #18286e);
+    box-shadow: 0 18px 40px rgba(20,35,70,.35), 0 0 0 3px #fff; transform: rotate(3deg); transition: transform .8s var(--spring); }
+  .in .pinart .card { transform: rotate(-2deg) translateY(-6px); }
+
+  .keys { display: flex; gap: 10px; flex-wrap: wrap; }
+  .keys kbd { font: 600 16px/1 var(--font); min-width: 52px; height: 52px; padding: 0 14px; display: grid; place-items: center; border-radius: 12px; background: var(--page); color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--line), 0 4px 0 var(--line); }
+  .keys kbd.on { background: var(--ink); color: var(--page); box-shadow: 0 4px 0 color-mix(in srgb, var(--ink) 55%, transparent); }
+
+  .thumbs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .thumbs i { aspect-ratio: 4 / 3; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); transform: translateY(14px); opacity: 0; transition: transform .6s var(--spring), opacity .4s; }
+  .thumbs i:nth-child(1) { background: linear-gradient(135deg, #dfe9ff, #9cc0ff); }
+  .thumbs i:nth-child(2) { background: linear-gradient(135deg, #ffe6c7, #ffb067); transition-delay: .06s; }
+  .thumbs i:nth-child(3) { background: linear-gradient(135deg, #d9f5e1, #6fd28f); transition-delay: .12s; }
+  .thumbs i:nth-child(4) { background: linear-gradient(135deg, #ece3ff, #a98bff); transition-delay: .18s; }
+  .thumbs i:nth-child(5) { background: linear-gradient(135deg, #e3eaf2, #9aa7b8); transition-delay: .24s; }
+  .in .thumbs i { transform: none; opacity: 1; }
+
+  /* Install */
+  .install { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+  .steps { margin: 40px 0 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 30px; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 18px; }
+  .steps li::before { content: counter(s); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-weight: 650; }
+  .steps strong { display: block; font-size: 18px; font-weight: 650; margin-top: 7px; }
+  .steps span { color: var(--muted); }
+  .note { margin-top: 104px; padding: 28px; border-radius: 24px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
+  .note strong { display: block; color: var(--ink); font-size: 18px; margin-bottom: 8px; font-weight: 650; }
+  kbd.inline { font: 600 14px/1 var(--font); padding: 3px 8px; border-radius: 6px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
+
+  /* Privacy and final call */
+  .privacy p { margin: 0; max-width: 22ch; font-size: clamp(32px, 4.6vw, 56px); line-height: 1.08; letter-spacing: -.035em; font-weight: 700; }
+  .privacy p span { color: var(--muted); }
+  .final { padding: 140px 0 120px; text-align: center; }
+  .final img { width: 104px; height: 104px; border-radius: 24px; box-shadow: 0 24px 60px rgba(47,107,255,.35); }
+  .final h2 { margin: 28px auto 0; text-align: center; }
+  .final .cta { margin-top: 30px; }
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
+  footer nav { display: flex; gap: 24px; }
+
+  .theme { position: fixed; left: 20px; bottom: 20px; z-index: 30; width: 48px; height: 48px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center;
+    background: var(--card); color: var(--ink); box-shadow: 0 8px 24px rgba(0,0,0,.14), inset 0 0 0 1px var(--line); transition: transform .3s var(--spring); }
+  .theme:hover { transform: scale(1.08); }
+  .theme svg { width: 22px; height: 22px; }
+
+  @media (max-width: 900px) {
+    .nav nav a:not(.btn) { display: none; }
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .t-speed, .t-history { grid-column: span 2; } .t-pin, .t-keys { grid-column: span 1; }
+    .install { grid-template-columns: 1fr; gap: 0; } .note { margin-top: 40px; }
   }
-  @keyframes glow { to { box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), inset 0 0 22px rgba(255,255,255,.08), inset 0 0 90px rgba(255,255,255,.03); } }
-  .stage { position: relative; text-align: center; }
-  .icon { width: 88px; height: 88px; border-radius: 20px; display: block; margin: 0 auto 40px; box-shadow: 0 18px 60px rgba(47,107,255,.35); }
-  .shot { position: relative; display: inline-block; padding: 18px 34px 22px; isolation: isolate; }
-  .shot::before { /* dimmed screen outside the selection */
-    content: ""; position: absolute; inset: 0; z-index: -1;
-    box-shadow: 0 0 0 200vmax rgba(5, 9, 18, .55);
-    outline: 1px solid rgba(255,255,255,.92);
-    animation: select 1.1s cubic-bezier(.2,.8,.2,1) .35s both;
-  }
-  @keyframes select { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0 0 0 0); } }
-  .handle { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); animation: appear .3s ease 1.3s both; }
-  .handle.tl { left: -4px; top: -4px; } .handle.tr { right: -4px; top: -4px; } .handle.bl { left: -4px; bottom: -4px; } .handle.br { right: -4px; bottom: -4px; }
-  .size { position: absolute; left: 0; top: -30px; font: 600 12px/1 var(--font); color: #fff; background: rgba(15, 20, 30, .9); padding: 5px 8px; border-radius: 4px; animation: appear .3s ease 1.3s both; font-variant-numeric: tabular-nums; }
-  @keyframes appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  h1 { margin: 0; font-size: clamp(44px, 8vw, 92px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 700; }
-  .lead { margin: 28px auto 0; max-width: 34em; font-size: clamp(17px, 2vw, 20px); color: var(--muted); }
-
-  /* The toolbar that appears under a selection doubles as the call to action. */
-  .toolbar { display: inline-flex; align-items: center; gap: 4px; margin-top: 34px; padding: 6px; border-radius: 12px;
-    background: rgba(32, 33, 37, .82); border: 1px solid rgba(255,255,255,.09); backdrop-filter: blur(24px);
-    box-shadow: 0 12px 40px rgba(0,0,0,.45); animation: appear .45s cubic-bezier(.2,.9,.3,1.15) 1.5s both; }
-  .tool { width: 38px; height: 38px; display: grid; place-items: center; color: #e9edf4; border-radius: 6px; }
-  .tool svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .tool.on { background: rgba(76, 194, 255, .22); color: #8fd8ff; }
-  .sep { width: 1px; height: 22px; background: rgba(255,255,255,.12); margin: 0 4px; }
-  .download { display: inline-flex; align-items: center; gap: 10px; height: 38px; padding: 0 18px; border-radius: 6px; text-decoration: none;
-    background: var(--sky); color: #062033; font-weight: 600; font-size: 15px; }
-  .download:hover { background: #8ad0ff; }
-  .download svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-  .meta { margin-top: 16px; font-size: 13px; color: var(--muted); animation: appear .4s ease 1.7s both; }
-
-  section { padding: 96px 0; border-top: 1px solid var(--line); }
-  h2 { margin: 0 0 40px; font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -0.02em; font-weight: 650; }
-
-  .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 48px; margin: 0; padding: 0; list-style: none; }
-  .features li { display: grid; grid-template-columns: 40px 1fr; gap: 16px; }
-  .glyph { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: rgba(90, 184, 255, .10); color: var(--sky); }
-  .glyph svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .features h3 { margin: 6px 0 6px; font-size: 17px; font-weight: 600; }
-  .features p { margin: 0; color: var(--muted); font-size: 15px; }
-
-  .install { display: grid; grid-template-columns: 1.1fr 1fr; gap: 64px; align-items: start; }
-  .steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 28px; }
-  .steps li { counter-increment: step; display: grid; grid-template-columns: 36px 1fr; gap: 16px; }
-  .steps li::before { content: counter(step); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
-    border: 1px solid var(--line); color: var(--text); font-weight: 600; font-size: 14px; }
-  .steps strong { display: block; font-weight: 600; margin-top: 4px; }
-  .steps span { color: var(--muted); font-size: 15px; }
-  .note { padding: 24px; border-radius: 12px; background: var(--ink-2); border: 1px solid var(--line); color: var(--muted); font-size: 15px; }
-  .note strong { color: var(--text); display: block; margin-bottom: 6px; font-weight: 600; }
-  .key { display: inline-block; padding: 1px 7px; border-radius: 5px; border: 1px solid rgba(255,255,255,.18); border-bottom-width: 2px; color: var(--text); font-size: 13px; }
-
-  .privacy p { margin: 0; max-width: 38em; font-size: clamp(19px, 2.2vw, 24px); line-height: 1.45; color: var(--text); }
-  footer { padding: 40px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-
-  @media (max-width: 860px) {
-    .features { grid-template-columns: 1fr 1fr; }
-    .install { grid-template-columns: 1fr; gap: 40px; }
-  }
-  @media (max-width: 560px) {
-    .features { grid-template-columns: 1fr; }
-    .shot { padding: 14px 16px 18px; }
-    .toolbar .tool:nth-child(n+4), .toolbar .sep { display: none; }
+  @media (max-width: 600px) {
+    .hero { padding-top: 56px; }
+    .stage { border-radius: 22px; padding: 10% 5% 14%; }
+    section { padding-top: 96px; }
+    .tiles { grid-template-columns: 1fr; } .tile { grid-column: auto !important; min-height: 0; padding: 26px; }
+    .thumbs { grid-template-columns: repeat(3, 1fr); } .thumbs i:nth-child(n+4) { display: none; }
+    .picker button span { display: none; } .picker button { padding: 0 12px; }
+    .key { left: 3%; bottom: -6%; }
+    .timeline .them { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    html { scroll-behavior: auto; }
   }
 </style>
 </head>
 <body>
 
-<header class="hero">
-  <div class="stage wrap">
-    <img class="icon" src="icon.png" alt="" width="88" height="88">
-    <div class="shot">
-      <span class="size" aria-hidden="true">1040 × 312</span>
-      <h1>Screenshots<br>without the wait</h1>
-      <i class="handle tl"></i><i class="handle tr"></i><i class="handle bl"></i><i class="handle br"></i>
-    </div>
-    <p class="lead">Press Print Screen, select an area or click a window, mark it up right there and paste it anywhere. CaptureSC replaces the Windows Snipping Tool with something faster and calmer.</p>
-    <div class="toolbar" role="group" aria-label="CaptureSC toolbar preview">
-      <span class="tool on" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M9 5h10v10"/></svg></span>
-      <span class="tool" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></span>
-      <span class="tool" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg></span>
-      <span class="sep" aria-hidden="true"></span>
-      <a class="download" href="https://github.com/MikiCarBre/capturesc-releases/releases/latest/download/CaptureSC-win-x64.zip">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
-        Download for Windows 11
-      </a>
-    </div>
-    <p class="meta">Free preview. About 92 MB, nothing else to install.</p>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="icon.png" alt="" width="26" height="26">CaptureSC</a>
+    <nav>
+      <a href="#markup">Markup</a>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a class="btn small" href="https://github.com/MikiCarBre/capturesc-releases/releases/latest/download/CaptureSC-win-x64.zip">Download</a>
+    </nav>
   </div>
 </header>
 
-<main>
-  <section>
+<main id="top">
+  <div class="hero wrap">
+    <h1 class="reveal">Screenshots<br>without the wait.</h1>
+    <p class="lead reveal">Press Print Screen, click a window, mark it up and paste. CaptureSC replaces the Snipping Tool on Windows 11 with something faster and calmer.</p>
+    <div class="cta reveal">
+      <a class="btn" href="https://github.com/MikiCarBre/capturesc-releases/releases/latest/download/CaptureSC-win-x64.zip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+        Download for Windows 11
+      </a>
+      <a class="btn ghost" href="#install">How to install</a>
+    </div>
+    <p class="meta reveal">Free preview, 92 MB. Nothing else to install.</p>
+  </div>
+
+  <div class="stage" id="stage" aria-label="Animation: CaptureSC freezes the screen, selects a window, marks it up and copies it" role="img">
+    <div class="device">
+      <div class="laptop" id="laptop">
+        <div class="lid">
+          <div class="screen" id="screen">
+            <div class="wall">
+              <div class="taskbar"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="dim"></div>
+              <div class="glow"></div>
+            </div>
+            <div class="win">
+              <div class="bar"><span>Launch plan</span><span class="ctl"><b></b><b></b><b></b></span></div>
+              <div class="side"><span>Overview</span><span class="on">Q3 launch</span><span>Budget</span><span>Team</span><span>Files</span></div>
+              <div class="main">
+                <h4>Q3 launch</h4>
+                <div class="chart"><i style="height:38%"></i><i style="height:55%"></i><i style="height:47%"></i><i class="hi" style="height:88%"></i><i style="height:62%"></i></div>
+                <div class="contact"><strong>Vendor contact</strong><span>Nina Marković</span><span>nina@example.com<i class="redact"></i></span><span>+381 60 000 0000<i class="redact"></i></span></div>
+                <span class="step">1</span>
+              </div>
+              <svg class="marks" viewBox="0 0 150 100" aria-hidden="true"><path d="M108 22 C96 30 86 38 72 50"/><path class="head" d="M72 50 l3 -7.5 M72 50 l7.8 -1.9"/></svg>
+              <div class="sel"><i></i><i></i><i></i><i></i><em>1114 × 744</em></div>
+            </div>
+            <div class="tools" aria-hidden="true">
+              <span data-t="arrow"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M9 5h10v10"/></svg></span>
+              <span><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></span>
+              <span><svg viewBox="0 0 24 24"><path d="M4 20h16M7 16l9-9 2 2-9 9H7z"/></svg></span>
+              <span data-t="redact"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg></span>
+              <span><svg viewBox="0 0 24 24"><path d="M6 6h12M12 6v13"/></svg></span>
+              <span class="sep"></span>
+              <span class="done"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+            </div>
+            <div class="pill"><b><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></b>Copied · Saved</div>
+          </div>
+        </div>
+        <div class="base"></div>
+      </div>
+    </div>
+    <div class="ground"></div>
+    <div class="key" id="key" aria-hidden="true"><span class="k1">PrtSc</span><span class="k2">Enter</span></div>
+  </div>
+
+  <section id="markup">
     <div class="wrap">
-      <h2>Everything happens where you capture</h2>
-      <ul class="features">
-        <li>
-          <span class="glyph"><svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg></span>
-          <div><h3>Ready instantly</h3><p>The screen freezes in about a tenth of a second, with a magnifier for pixel-exact edges.</p></div>
-        </li>
-        <li>
-          <span class="glyph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="12" height="10" rx="2"/><rect x="9" y="9" width="12" height="10" rx="2"/></svg></span>
-          <div><h3>Click a window</h3><p>No dragging needed. Or select any area and adjust it with handles and arrow keys.</p></div>
-        </li>
-        <li>
-          <span class="glyph"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M9 5h10v10"/></svg></span>
-          <div><h3>Mark it up in place</h3><p>Arrows, rectangles, ellipses, highlight, text and numbered steps, right on the selection.</p></div>
-        </li>
-        <li>
-          <span class="glyph"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg></span>
-          <div><h3>Redact for good</h3><p>Pixels are destroyed, not blurred, so emails and phone numbers cannot be recovered.</p></div>
-        </li>
-        <li>
-          <span class="glyph"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span>
-          <div><h3>Saved and copied</h3><p>The moment you let go, it is in your Screenshots folder and on the clipboard.</p></div>
-        </li>
-        <li>
-          <span class="glyph"><svg viewBox="0 0 24 24"><path d="M15 3.5 20.5 9 17 10.5 13.5 14l.5 4.5L5.5 10l4.5.5L13.5 7zM9.5 14.5 4 20"/></svg></span>
-          <div><h3>Pin, history, your keys</h3><p>Keep a capture floating on top, find old ones, and choose your own shortcuts.</p></div>
-        </li>
-      </ul>
+      <h2>Mark it up right where you captured.</h2>
+      <p class="sub">The toolbar appears under your selection. No editor window, no extra step. Try the tools.</p>
+      <div class="studio">
+        <div class="shot" id="shot" data-tool="arrow">
+          <div class="win">
+            <div class="bar"><span>Launch plan</span><span class="ctl"><b></b><b></b><b></b></span></div>
+            <div class="side"><span>Overview</span><span class="on">Q3 launch</span><span>Budget</span><span>Team</span><span>Files</span></div>
+            <div class="main">
+              <h4>Q3 launch</h4>
+              <div class="chart"><i style="height:38%"></i><i style="height:55%"></i><i style="height:47%"></i><i class="hi" style="height:88%"></i><i style="height:62%"></i></div>
+              <div class="contact"><strong>Vendor contact</strong><span>Nina Marković</span><span>nina@example.com<i class="redact"></i></span><span>+381 60 000 0000<i class="redact"></i></span></div>
+              <span class="step" style="left:4%;top:20%">1</span><span class="step" style="left:51%;top:20%">2</span><span class="step" style="left:51%;top:60%">3</span>
+              <span class="box"></span><span class="hl"></span><span class="note">Confirm by Friday</span>
+            </div>
+            <svg class="marks" viewBox="0 0 150 100" aria-hidden="true"><path d="M108 22 C96 30 86 38 72 50"/><path class="head" d="M72 50 l3 -7.5 M72 50 l7.8 -1.9"/></svg>
+          </div>
+        </div>
+        <div class="picker" role="toolbar" aria-label="Markup tools">
+          <button type="button" data-tool="arrow" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M9 5h10v10"/></svg><span>Arrow</span></button>
+          <button type="button" data-tool="box" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg><span>Rectangle</span></button>
+          <button type="button" data-tool="highlight" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 16l9-9 2 2-9 9H7z"/></svg><span>Highlight</span></button>
+          <button type="button" data-tool="redact" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg><span>Redact</span></button>
+          <button type="button" data-tool="text" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M6 6h12M12 6v13"/></svg><span>Text</span></button>
+          <button type="button" data-tool="steps" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M11 9.5 12.5 8.5V16"/></svg><span>Steps</span></button>
+        </div>
+        <p class="caption" id="caption" aria-live="polite">Point at what matters. Press A.</p>
+      </div>
     </div>
   </section>
 
-  <section>
+  <section id="features">
+    <div class="wrap">
+      <h2>Small app. Every detail considered.</h2>
+      <div class="tiles">
+        <article class="tile t-speed">
+          <h3>Ready before you finish the keypress.</h3>
+          <p>The screen freezes in about a tenth of a second, then you select. Saved to your Screenshots folder and on the clipboard the moment you let go.</p>
+          <div class="art timeline" aria-hidden="true"><div class="track"></div><div class="fill"></div><div class="mark"></div><span class="us">CaptureSC, 0.1 s</span><span class="them">Most tools: open, wait, then select</span></div>
+        </article>
+        <article class="tile t-pin">
+          <h3>Pin it on top.</h3>
+          <p>Keep a capture floating over your work while you type.</p>
+          <div class="art pinart" aria-hidden="true"><div class="back"></div><div class="card"></div></div>
+        </article>
+        <article class="tile t-keys">
+          <h3>Your keys.</h3>
+          <p>Every tool has a one-letter shortcut, and you can change any of them.</p>
+          <div class="art keys" aria-hidden="true"><kbd class="on">PrtSc</kbd><kbd>A</kbd><kbd>R</kbd><kbd>B</kbd><kbd>T</kbd><kbd>P</kbd></div>
+        </article>
+        <article class="tile t-history">
+          <h3>Find yesterday's capture.</h3>
+          <p>History keeps every screenshot one click away from the tray. Redaction destroys the pixels, so what you hide stays hidden.</p>
+          <div class="art thumbs" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
     <div class="wrap install">
       <div>
-        <h2>Install in a minute</h2>
+        <h2>Install in a minute.</h2>
         <ol class="steps">
           <li><div><strong>Unzip the download</strong><span>Anywhere you like, for example your Downloads folder.</span></div></li>
-          <li><div><strong>Double-click Install.cmd</strong><span>Click Yes when Windows asks. The installer adds the preview certificate, installs CaptureSC and starts it.</span></div></li>
-          <li><div><strong>Press <span class="key">Print Screen</span></strong><span>That is it. CaptureSC waits in the tray next to the clock.</span></div></li>
+          <li><div><strong>Double-click Install.cmd</strong><span>Click Yes when Windows asks. It installs CaptureSC and starts it.</span></div></li>
+          <li><div><strong>Press <kbd class="inline">Print Screen</kbd></strong><span>CaptureSC waits in the tray next to the clock.</span></div></li>
         </ol>
       </div>
       <div class="note">
@@ -182,16 +443,111 @@
 
   <section class="privacy">
     <div class="wrap">
-      <h2>Private by design</h2>
-      <p>Everything stays on your computer. No account, no analytics, and nothing is ever uploaded. Your screenshots are plain files in your Pictures folder.</p>
+      <p>Everything stays on your computer. <span>No account, no analytics, nothing uploaded. Your screenshots are plain files in your Pictures folder.</span></p>
     </div>
   </section>
+
+  <div class="final wrap">
+    <img src="icon.png" alt="" width="104" height="104">
+    <h2>Press Print Screen.</h2>
+    <div class="cta">
+      <a class="btn" href="https://github.com/MikiCarBre/capturesc-releases/releases/latest/download/CaptureSC-win-x64.zip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+        Download for Windows 11
+      </a>
+    </div>
+    <p class="meta">Free preview for Windows 11.</p>
+  </div>
 </main>
 
-<footer class="wrap">
-  <span>CaptureSC for Windows 11</span>
-  <span><a href="https://github.com/MikiCarBre/capturesc-releases/issues/new">Report a problem</a> &nbsp; <a href="https://github.com/MikiCarBre/capturesc-releases/releases">All versions</a></span>
+<footer>
+  <div class="wrap">
+    <span>CaptureSC</span>
+    <nav><a href="https://github.com/MikiCarBre/capturesc-releases/issues/new">Report a problem</a><a href="https://github.com/MikiCarBre/capturesc-releases/releases">All versions</a></nav>
+  </div>
 </footer>
 
+<button class="theme" id="theme" type="button" aria-label="Switch light or dark theme">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>
+</button>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const screen = document.getElementById('screen');
+  const stage = document.getElementById('stage');
+  const key = document.getElementById('key');
+  const laptop = document.getElementById('laptop');
+
+  // Hero timeline: press PrtSc, freeze, select, lift, arrow, redact, press Enter, copied, reset.
+  const all = ['s-freeze', 's-select', 's-lift', 's-arrow', 's-redact', 's-done'];
+  const steps = [
+    [() => {}, 900],
+    [press, 260],
+    [() => screen.classList.add('s-freeze'), 600],
+    [() => screen.classList.add('s-select'), 900],
+    [() => screen.classList.add('s-lift'), 1100],
+    [() => screen.classList.add('s-arrow'), 1200],
+    [() => screen.classList.add('s-redact'), 1400],
+    [() => { stage.classList.add('s-done'); press(); }, 240],
+    [() => { screen.classList.remove(...all); screen.classList.add('s-done'); }, 2600],
+    [() => { screen.classList.remove(...all); stage.classList.remove('s-done'); }, 800],
+  ];
+  function press() { key.classList.add('down'); setTimeout(() => key.classList.remove('down'), 180); }
+  let i = 0, timer = 0, running = false;
+  function tick() {
+    const [run, wait] = steps[i];
+    run();
+    i = (i + 1) % steps.length;
+    timer = setTimeout(tick, wait);
+  }
+  function play(on) {
+    if (on === running) return;
+    running = on;
+    if (on) tick(); else clearTimeout(timer);
+  }
+  if (reduce) screen.classList.add('s-freeze', 's-select', 's-lift', 's-arrow', 's-redact');
+  else {
+    let visible = false;
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; play(visible && !document.hidden); }, { threshold: .25 }).observe(stage);
+    document.addEventListener('visibilitychange', () => play(visible && !document.hidden));
+  }
+
+  // The laptop turns to face you as you scroll.
+  if (!reduce) {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const r = stage.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, 1 - (r.top + r.height * .25) / innerHeight));
+      laptop.style.setProperty('--p', (p * p * (3 - 2 * p)).toFixed(3));
+    };
+    addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(update); }, { passive: true });
+    addEventListener('resize', update);
+    update();
+  }
+
+  // Markup demo.
+  const shot = document.getElementById('shot'), caption = document.getElementById('caption');
+  const words = { arrow: 'Point at what matters. Press A.', box: 'Frame an area. Press R.', highlight: 'Mark a line of text. Press H.', redact: 'Hide emails and numbers for good. Press B.', text: 'Add a note. Press T.', steps: 'Number the steps. Press N.' };
+  document.querySelectorAll('.picker button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.picker button').forEach(o => o.setAttribute('aria-pressed', o === b));
+    shot.dataset.tool = b.dataset.tool;
+    caption.textContent = words[b.dataset.tool];
+  }));
+
+  // Tiles play their small demo once, when they come into view.
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .45 });
+  document.querySelectorAll('.tile').forEach(t => io.observe(t));
+
+  // Theme toggle.
+  document.getElementById('theme').addEventListener('click', () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+  });
+})();
+</script>
 </body>
 </html>
