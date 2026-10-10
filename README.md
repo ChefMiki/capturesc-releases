@@ -23,10 +23,10 @@ This repository only hosts the downloads. The app is a free preview for Windows 
 ## What it does
 
 - **Instant:** the frozen-screen overlay appears in about a tenth of a second.
-- **Click a window** to capture exactly its edges, or drag any area. Adjust with handles or arrow keys.
+- **Click a window** to capture exactly its edges, or drag any area. Drag the border to move it, the handles to resize, or use the arrow keys.
 - **Mark it up in place:** arrows, rectangles, ellipses, highlight, text and numbered steps.
 - **Redact for good:** pixels are destroyed, not just blurred, so the data cannot be recovered.
-- **Saved and copied** the moment you select. Ctrl+V pastes it anywhere.
+- **Saved and copied** the moment you select. Ctrl+V pastes it anywhere. A small card in the corner confirms it; click it to open the screenshot.
 - **Pin to screen,** history, your own shortcuts, light and dark theme.
 
 ## Privacy
