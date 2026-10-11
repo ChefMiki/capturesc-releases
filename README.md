@@ -10,7 +10,7 @@ This repository only hosts the downloads. The app is a free preview for Windows 
 
 ## Download
 
-**[Download Snipito for Windows](../../releases/latest)**
+**[Download Snipito for Windows](../../releases/latest/download/Snipito-win-x64.zip)**
 
 ## Install
 
